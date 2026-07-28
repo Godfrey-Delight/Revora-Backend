@@ -18,7 +18,7 @@ import {
 import { createHealthRouter } from "./routes/health";
 import vestingRouter from "./routes/vesting";
 import { offeringSanitizeMiddleware } from "./middleware/offeringSanitize";
-import { createStartupRegisterRateLimit } from "./middleware/startupRegisterRateLimit";
+import { createStartupAuthTierLimiter } from "./middleware/startupAuthRateTierPolicy";
 import { env } from "./config/env";
 import { validateWebhookUrl, SsrfValidationError } from "./lib/ssrfProtection";
 import {
@@ -608,9 +608,22 @@ export function createApp(dependencies: AppDependencies = {}): express.Express {
     });
   });
 
+  /**
+   * @notice Rate-limiter tier policy enforcement for the STARTUP_REGISTER endpoint.
+   *
+   * Security assumptions:
+   * - Tier resolution is performed via the `x-revora-rate-tier` request header.
+   * - Privileged tiers (`trusted`, `internal`) require a valid shared secret in
+   *   `x-revora-tier-secret`; an absent, empty, or mismatched secret causes
+   *   silent downgrade to the `standard` tier (fail-safe).
+   * - If no tier header is supplied, the request is treated as `standard`.
+   * - Rate-limit state is in-process; a distributed store (e.g. Redis) must be
+   *   substituted for multi-instance deployments.
+   */
+  const startupTierLimiter = createStartupAuthTierLimiter();
   apiRouter.post(
     "/startup/register",
-    createStartupRegisterRateLimit(),
+    startupTierLimiter.middleware,
     createStartupRegisterHandler(),
   );
 
@@ -691,6 +704,11 @@ export const __test = {
   parseIsoDate,
   parseOfferingValidationPayload,
   evaluateOfferingValidationMatrix,
+  /**
+   * @dev Exposes the tier-limiter factory for integration tests that need to
+   *      inspect tier resolution or reset counters without restarting the app.
+   */
+  createStartupAuthTierLimiter,
 };
 
 export { classifyStellarRPCFailure, StellarRPCFailureClass };
