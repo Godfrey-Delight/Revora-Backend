@@ -57,6 +57,8 @@ import { createMobileCompanionRouter } from "./routes/mobileCompanion";
 import { InMemoryDeviceKeyStore } from "./middleware/deviceSignature";
 import { Keypair } from '@stellar/stellar-sdk';
 import { OfacSanctionsLoader } from './services/ofacSanctionsLoader';
+import { createScimRouter } from './routes/scim';
+import { UserRepository } from './db/repositories/userRepository';
 
 const port = env.PORT;
 const API_VERSION_PREFIX = env.API_VERSION_PREFIX;
@@ -701,9 +703,9 @@ export function createApp(dependencies: AppDependencies = {}): express.Express {
   const amlService = createAMLService(pool, amlAuditRepo, 'system');
   apiRouter.use("/aml", createAMLRoutes(amlService));
 
-  // Mobile companion API with per-device Ed25519 request signatures
-  const deviceKeyStore = new InMemoryDeviceKeyStore();
-  apiRouter.use("/mobile", createMobileCompanionRouter({ keyStore: deviceKeyStore }));
+  const userRepo = new UserRepository(pool);
+  const scimToken = env.SCIM_TOKEN ?? '';
+  app.use('/scim/v2', createScimRouter(userRepo, scimToken, '/scim/v2'));
 
   app.use(API_VERSION_PREFIX, apiRouter);
   app.use((_req, _res, next) => next(Errors.notFound("Route not found")));
