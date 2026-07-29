@@ -3,7 +3,7 @@ import { HolidayCalendarService } from './holidayCalendarService';
 import { MetricsCollector } from '../lib/metrics';
 import { InMemorySecurityAuditRepository } from '../security/audit';
 import { Errors } from '../lib/errors';
-import { MetricsCollector } from '../lib/metrics';
+
 
 const ENV_CATCHUP_MAX_BAK = process.env.SCHEDULER_CATCHUP_MAX;
 
@@ -155,14 +155,7 @@ describe('DistributionScheduler', () => {
     expect(result.errors[0].error).toBe('Distribution failed: UNKNOWN');
   });
 
-  it('skips reports with missing data', async () => {
-    revenueReportRepo.findApprovedWithoutDistribution.mockResolvedValueOnce([
-      { id: 'report-bad', offering_id: 'off-1' },
-    ]);
-    revenueReportRepo.claimApprovedReportForDistribution.mockResolvedValueOnce({
-      id: 'report-bad',
-      offering_id: 'off-1',
-    });
+
 
     it('skips reports claimed by another scheduler', async () => {
       revenueReportRepo.claimApprovedReportForDistribution.mockResolvedValueOnce(null);
